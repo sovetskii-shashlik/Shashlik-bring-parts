@@ -1,5 +1,5 @@
 local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game:GetService("CoreGui") -- Фиксируем GUI в CoreGui
+screenGui.Parent = game:GetService("CoreGui")
 
 local frame = Instance.new("Frame")
 frame.Parent = screenGui
