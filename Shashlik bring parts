@@ -1,5 +1,10 @@
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
 local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game:GetService("CoreGui")
+screenGui.Parent = CoreGui
 
 local frame = Instance.new("Frame")
 frame.Parent = screenGui
@@ -73,7 +78,7 @@ titleLabelBottom.TextStrokeColor3 = Color3.new(0, 0, 0)
 local textBox = Instance.new("TextBox")
 textBox.Parent = frame
 textBox.Size = UDim2.new(0.8, 0, 0.2, 0)
-textBox.Position = UDim2.new(0.1, 0, 0.25, 0) -- Поднят вверх
+textBox.Position = UDim2.new(0.1, 0, 0.25, 0)
 textBox.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
 textBox.BackgroundTransparency = 0
 textBox.Text = ""
@@ -84,7 +89,7 @@ textBox.TextScaled = true
 local button = Instance.new("TextButton")
 button.Parent = frame
 button.Size = UDim2.new(0.8, 0, 0.2, 0)
-button.Position = UDim2.new(0.1, 0, 0.55, 0) -- Поднята вверх
+button.Position = UDim2.new(0.1, 0, 0.55, 0)
 button.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
 button.BackgroundTransparency = 0
 button.Text = "Bring Parts | Off"
@@ -95,8 +100,11 @@ local blackHoleActive = false
 local player = nil
 local humanoidRootPart = nil
 local DescendantAddedConnection = nil
+local CharacterAddedConnection = nil
 
-local Folder = Instance.new("Folder", workspace)
+local processedParts = {}
+
+local Folder = Instance.new("Folder", Workspace)
 local Part = Instance.new("Part", Folder)
 local Attachment1 = Instance.new("Attachment", Part)
 Part.Anchored = true
@@ -110,7 +118,7 @@ if not getgenv().Network then
     }
 
     Network.RetainPart = function(Part)
-        if Part:IsA("BasePart") and Part:IsDescendantOf(workspace) then
+        if Part:IsA("BasePart") and Part:IsDescendantOf(Workspace) then
             table.insert(Network.BaseParts, Part)
             Part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
             Part.CanCollide = false
@@ -118,11 +126,11 @@ if not getgenv().Network then
     end
 
     local function EnablePartControl()
-        game.Players.LocalPlayer.ReplicationFocus = workspace
-        game:GetService("RunService").Heartbeat:Connect(function()
+        game.Players.LocalPlayer.ReplicationFocus = Workspace
+        RunService.Heartbeat:Connect(function()
             sethiddenproperty(game.Players.LocalPlayer, "SimulationRadius", math.huge)
             for _, Part in pairs(Network.BaseParts) do
-                if Part:IsDescendantOf(workspace) then
+                if Part:IsDescendantOf(Workspace) then
                     Part.Velocity = Network.Velocity
                 end
             end
@@ -159,26 +167,44 @@ local function ForcePart(v)
         AlignPosition.Responsiveness = 200
         AlignPosition.Attachment0 = Attachment2
         AlignPosition.Attachment1 = Attachment1
+        -- Добавляем часть в список обработанных
+        table.insert(processedParts, v)
     end
 end
+
+local function ResetParts()
+    for _, v in ipairs(processedParts) do
+        if v and v:IsDescendantOf(Workspace) then
+            for _, x in ipairs(v:GetChildren()) do
+                if x:IsA("BodyMover") or x.Name == "Torque" or x.Name == "AlignPosition" or x.Name == "Attachment" then
+                    x:Destroy()
+                end
+            end
+            v.CanCollide = true -- Возвращаем CanCollide
+        end
+    end
+    processedParts = {}
+end
+
 
 local function toggleBlackHole()
     blackHoleActive = not blackHoleActive
     if blackHoleActive then
         button.Text = "Bring Parts | On"
-        button.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
-        for _, v in ipairs(workspace:GetDescendants()) do
+        button.BackgroundColor3 = Color3.fromRGB(0, 180, 0)  
+        ResetParts()
+        for _, v in ipairs(Workspace:GetDescendants()) do
             ForcePart(v)
         end
 
-        DescendantAddedConnection = workspace.DescendantAdded:Connect(function(v)
+        DescendantAddedConnection = Workspace.DescendantAdded:Connect(function(v)
             if blackHoleActive then
                 ForcePart(v)
             end
         end)
 
         spawn(function()
-            while blackHoleActive and game:GetService("RunService").RenderStepped:Wait() do
+            while blackHoleActive and RunService.RenderStepped:Wait() do
                 if humanoidRootPart then
                     Attachment1.WorldCFrame = humanoidRootPart.CFrame
                 end
@@ -189,13 +215,14 @@ local function toggleBlackHole()
         button.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
         if DescendantAddedConnection then
             DescendantAddedConnection:Disconnect()
-        end
+        end 
+        ResetParts()
     end
 end
 
 local function getPlayer(name)
     local lowerName = string.lower(name)
-    for _, p in pairs(game.Players:GetPlayers()) do
+    for _, p in pairs(Players:GetPlayers()) do
         local lowerPlayer = string.lower(p.Name)
         if string.find(lowerPlayer, lowerName) then
             return p
@@ -211,6 +238,13 @@ textBox.FocusLost:Connect(function(enterPressed)
         if player then
             textBox.Text = player.Name
             humanoidRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            if CharacterAddedConnection then
+                CharacterAddedConnection:Disconnect()
+            end
+            CharacterAddedConnection = player.CharacterAdded:Connect(function(character)
+                humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+                print("Target player respawned. HumanoidRootPart updated.")
+            end)
         end
     end
 end)
