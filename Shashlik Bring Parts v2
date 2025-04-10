@@ -1,0 +1,262 @@
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Parent = screenGui
+frame.Size = UDim2.new(0, 250, 0, 180)
+frame.BackgroundColor3 = Color3.new(0, 0, 0)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+
+local corner = Instance.new("UICorner")
+corner.Parent = frame
+corner.CornerRadius = UDim.new(0.2, 0)
+
+local screenSize = screenGui.AbsoluteSize
+local frameSize = frame.AbsoluteSize
+frame.Position = UDim2.new(
+    0.35, -frameSize.X / 2,
+    0.65, -frameSize.Y / 2
+)
+
+frame.Active = true
+frame.Draggable = true
+
+local blackPartTop = Instance.new("Frame")
+blackPartTop.Parent = frame
+blackPartTop.Size = UDim2.new(1, 0, 0.15, 0)
+blackPartTop.Position = UDim2.new(0, 0, 0, 0)
+blackPartTop.BackgroundColor3 = Color3.new(1, 1, 1)
+blackPartTop.BackgroundTransparency = 0
+blackPartTop.BorderSizePixel = 0
+
+local blackCornerTop = Instance.new("UICorner")
+blackCornerTop.Parent = blackPartTop
+blackCornerTop.CornerRadius = UDim.new(0.2, 0)
+
+local titleLabelTop = Instance.new("TextLabel")
+titleLabelTop.Parent = blackPartTop
+titleLabelTop.Size = UDim2.new(1, 0, 1, 0)
+titleLabelTop.Position = UDim2.new(0, 0, 0, 0)
+titleLabelTop.BackgroundTransparency = 1
+titleLabelTop.Text = "Shashlik Bring Parts"
+titleLabelTop.TextColor3 = Color3.new(0, 0, 0)
+titleLabelTop.TextScaled = true
+titleLabelTop.Font = Enum.Font.SourceSansBold
+titleLabelTop.TextStrokeTransparency = 0
+titleLabelTop.TextStrokeColor3 = Color3.new(1, 1, 1)
+
+local blackPartBottom = Instance.new("Frame")
+blackPartBottom.Parent = frame
+blackPartBottom.Size = UDim2.new(1, 0, 0.15, 0)
+blackPartBottom.Position = UDim2.new(0, 0, 0.85, 0)
+blackPartBottom.BackgroundColor3 = Color3.new(1, 1, 1)
+blackPartBottom.BackgroundTransparency = 0
+blackPartBottom.BorderSizePixel = 0
+
+local blackCornerBottom = Instance.new("UICorner")
+blackCornerBottom.Parent = blackPartBottom
+blackCornerBottom.CornerRadius = UDim.new(0.2, 0)
+
+local titleLabelBottom = Instance.new("TextLabel")
+titleLabelBottom.Parent = blackPartBottom
+titleLabelBottom.Size = UDim2.new(1, 0, 1, 0)
+titleLabelBottom.Position = UDim2.new(0, 0, 0, 0)
+titleLabelBottom.BackgroundTransparency = 1
+titleLabelBottom.Text = "By PrespeshnikShashlika"
+titleLabelBottom.TextColor3 = Color3.new(0, 0, 0)
+titleLabelBottom.TextScaled = true
+titleLabelBottom.Font = Enum.Font.SourceSansBold
+titleLabelBottom.TextStrokeTransparency = 0
+titleLabelBottom.TextStrokeColor3 = Color3.new(1, 1, 1)
+
+local textBox = Instance.new("TextBox")
+textBox.Parent = frame
+textBox.Size = UDim2.new(0.8, 0, 0.2, 0)
+textBox.Position = UDim2.new(0.1, 0, 0.25, 0)
+textBox.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
+textBox.BackgroundTransparency = 0
+textBox.Text = ""
+textBox.PlaceholderText = "Введите ник..."
+textBox.TextColor3 = Color3.new(1, 1, 1)
+textBox.TextScaled = true
+
+local button = Instance.new("TextButton")
+button.Parent = frame
+button.Size = UDim2.new(0.8, 0, 0.2, 0)
+button.Position = UDim2.new(0.1, 0, 0.55, 0)
+button.BackgroundColor3 = Color3.new(0.5, 0.5, 0.5)
+button.BackgroundTransparency = 0
+button.Text = "Bring Parts | Off"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+
+-- Основные переменные
+local blackHoleActive = false
+local player = nil
+local humanoidRootPart = nil
+
+-- Подключения
+local connections = {
+    DescendantAdded = nil,
+    CharacterAdded = nil,
+    Heartbeat = nil
+}
+
+-- Таблицы для хранения данных
+local parts = {}
+local attractionStrength = 1000
+
+-- Функция для очистки всех подключений
+local function cleanupConnections()
+    for name, connection in pairs(connections) do
+        if connection then
+            connection:Disconnect()
+            connections[name] = nil
+        end
+    end
+end
+
+-- Функция для сброса всех партов
+local function resetParts()
+    for _, part in pairs(parts) do
+        if part and part:IsDescendantOf(Workspace) then
+            part.CanCollide = true
+            part.Velocity = Vector3.new(0, 0, 0)
+        end
+    end
+    parts = {}
+end
+
+-- Функция добавления парта
+local function addPart(part)
+    if part:IsA("BasePart") and not part.Anchored and part:IsDescendantOf(Workspace) then
+        -- Пропускаем части персонажей и ручек инструментов
+        if part.Parent:FindFirstChildOfClass("Humanoid") or part.Parent:FindFirstChild("Head") or part.Name == "Handle" then
+            return
+        end
+        
+        -- Настраиваем физические свойства
+        part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+        part.CanCollide = false
+        
+        -- Добавляем в таблицу, если еще не добавлен
+        if not table.find(parts, part) then
+            table.insert(parts, part)
+        end
+    end
+end
+
+-- Функция удаления парта
+local function removePart(part)
+    local index = table.find(parts, part)
+    if index then
+        table.remove(parts, index)
+    end
+end
+
+-- Функция притяжения партов
+local function attractParts()
+    if not humanoidRootPart then return end
+    
+    local targetPosition = humanoidRootPart.Position
+    
+    for _, part in pairs(parts) do
+        if part and part.Parent and not part.Anchored then
+            local direction = (targetPosition - part.Position).Unit
+            part.Velocity = direction * attractionStrength
+        end
+    end
+end
+
+-- Включение/выключение системы
+local function toggleBlackHole()
+    blackHoleActive = not blackHoleActive
+    
+    if blackHoleActive then
+        button.Text = "Bring Parts | On"
+        button.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
+        
+        -- Очистка перед запуском
+        resetParts()
+        cleanupConnections()
+        
+        -- Настройка подключений
+        connections.DescendantAdded = Workspace.DescendantAdded:Connect(addPart)
+        connections.CharacterAdded = player.CharacterAdded:Connect(function(character)
+            humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        end)
+        
+        -- Добавление существующих партов
+        for _, part in pairs(Workspace:GetDescendants()) do
+            addPart(part)
+        end
+        
+        -- Запуск системы притяжения
+        connections.Heartbeat = RunService.Heartbeat:Connect(function()
+            if blackHoleActive and humanoidRootPart then
+                attractParts()
+            end
+        end)
+        
+        -- Установка SimulationRadius
+        sethiddenproperty(Players.LocalPlayer, "SimulationRadius", math.huge)
+    else
+        button.Text = "Bring Parts | Off"
+        button.BackgroundColor3 = Color3.fromRGB(255, 135, 40)
+        
+        -- Очистка
+        cleanupConnections()
+        resetParts()
+    end
+end
+
+-- Поиск игрока по нику
+local function getPlayer(name)
+    local lowerName = name and string.lower(name) or ""
+    for _, p in pairs(Players:GetPlayers()) do
+        if string.find(string.lower(p.Name), lowerName) or 
+           (p.DisplayName and string.find(string.lower(p.DisplayName), lowerName)) then
+            return p
+        end
+    end
+end
+
+-- Обработчики событий
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        player = getPlayer(textBox.Text)
+        if player then
+            textBox.Text = player.Name
+            humanoidRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            
+            -- Обновляем подключение при смене игрока
+            if connections.CharacterAdded then
+                connections.CharacterAdded:Disconnect()
+            end
+            
+            connections.CharacterAdded = player.CharacterAdded:Connect(function(character)
+                humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+            end)
+        end
+    end
+end)
+
+button.MouseButton1Click:Connect(function()
+    if player then
+        toggleBlackHole()
+    else
+        textBox.Text = "Сначала введите ник!"
+    end
+end)
+
+-- Очистка при уничтожении GUI
+screenGui.Destroying:Connect(function()
+    cleanupConnections()
+    resetParts()
+end)
