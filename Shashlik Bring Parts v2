@@ -96,23 +96,19 @@ button.Text = "Bring Parts | Off"
 button.TextColor3 = Color3.new(1, 1, 1)
 button.TextScaled = true
 
--- Основные переменные
 local blackHoleActive = false
 local player = nil
 local humanoidRootPart = nil
 
--- Подключения
 local connections = {
     DescendantAdded = nil,
     CharacterAdded = nil,
     Heartbeat = nil
 }
 
--- Таблицы для хранения данных
 local parts = {}
 local attractionStrength = 1000
 
--- Функция для очистки всех подключений
 local function cleanupConnections()
     for name, connection in pairs(connections) do
         if connection then
@@ -122,7 +118,6 @@ local function cleanupConnections()
     end
 end
 
--- Функция для сброса всех партов
 local function resetParts()
     for _, part in pairs(parts) do
         if part and part:IsDescendantOf(Workspace) then
@@ -133,26 +128,21 @@ local function resetParts()
     parts = {}
 end
 
--- Функция добавления парта
 local function addPart(part)
     if part:IsA("BasePart") and not part.Anchored and part:IsDescendantOf(Workspace) then
-        -- Пропускаем части персонажей и ручек инструментов
         if part.Parent:FindFirstChildOfClass("Humanoid") or part.Parent:FindFirstChild("Head") or part.Name == "Handle" then
             return
         end
         
-        -- Настраиваем физические свойства
         part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
         part.CanCollide = false
         
-        -- Добавляем в таблицу, если еще не добавлен
         if not table.find(parts, part) then
             table.insert(parts, part)
         end
     end
 end
 
--- Функция удаления парта
 local function removePart(part)
     local index = table.find(parts, part)
     if index then
@@ -160,7 +150,6 @@ local function removePart(part)
     end
 end
 
--- Функция притяжения партов
 local function attractParts()
     if not humanoidRootPart then return end
     
@@ -174,7 +163,6 @@ local function attractParts()
     end
 end
 
--- Включение/выключение системы
 local function toggleBlackHole()
     blackHoleActive = not blackHoleActive
     
@@ -182,41 +170,34 @@ local function toggleBlackHole()
         button.Text = "Bring Parts | On"
         button.BackgroundColor3 = Color3.fromRGB(255, 75, 75)
         
-        -- Очистка перед запуском
         resetParts()
         cleanupConnections()
         
-        -- Настройка подключений
         connections.DescendantAdded = Workspace.DescendantAdded:Connect(addPart)
         connections.CharacterAdded = player.CharacterAdded:Connect(function(character)
             humanoidRootPart = character:WaitForChild("HumanoidRootPart")
         end)
         
-        -- Добавление существующих партов
         for _, part in pairs(Workspace:GetDescendants()) do
             addPart(part)
         end
         
-        -- Запуск системы притяжения
         connections.Heartbeat = RunService.Heartbeat:Connect(function()
             if blackHoleActive and humanoidRootPart then
                 attractParts()
             end
         end)
         
-        -- Установка SimulationRadius
         sethiddenproperty(Players.LocalPlayer, "SimulationRadius", math.huge)
     else
         button.Text = "Bring Parts | Off"
         button.BackgroundColor3 = Color3.fromRGB(255, 135, 40)
-        
-        -- Очистка
+  
         cleanupConnections()
         resetParts()
     end
 end
 
--- Поиск игрока по нику
 local function getPlayer(name)
     local lowerName = name and string.lower(name) or ""
     for _, p in pairs(Players:GetPlayers()) do
@@ -227,15 +208,13 @@ local function getPlayer(name)
     end
 end
 
--- Обработчики событий
 textBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then
         player = getPlayer(textBox.Text)
         if player then
             textBox.Text = player.Name
             humanoidRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-            
-            -- Обновляем подключение при смене игрока
+   
             if connections.CharacterAdded then
                 connections.CharacterAdded:Disconnect()
             end
@@ -255,7 +234,6 @@ button.MouseButton1Click:Connect(function()
     end
 end)
 
--- Очистка при уничтожении GUI
 screenGui.Destroying:Connect(function()
     cleanupConnections()
     resetParts()
