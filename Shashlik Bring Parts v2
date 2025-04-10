@@ -107,7 +107,7 @@ local connections = {
 }
 
 local parts = {}
-local attractionStrength = 1000
+local attractionStrength = 10000
 
 local function cleanupConnections()
     for name, connection in pairs(connections) do
