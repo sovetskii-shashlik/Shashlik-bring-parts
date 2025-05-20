@@ -35,8 +35,7 @@ frame.Position = UDim2.new(
     0.65, -frameSize.Y / 2
 )
 
-frame.Active = true
-frame.Draggable = true
+local dragDetector = Instance.new("UIDragDetector", frame)
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Parent = frame
