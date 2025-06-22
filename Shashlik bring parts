@@ -1,1 +1,1 @@
-loadstring(game:HttpGame("https://glot.io/snippets/h6k1ijlqsv/raw/manda.lua"))()
+loadstring(game:HttpGet("https://glot.io/snippets/h6k1ijlqsv/raw/manda.lua"))()
